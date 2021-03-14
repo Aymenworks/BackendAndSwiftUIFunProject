@@ -1,0 +1,25 @@
+# ------------- SERVER ------------- #
+
+## makeの出力
+out
+
+## goenv
+.go-version
+
+## .envrc
+.env
+.envrc
+
+# ------------- COMMON ------------- #
+
+## JetBrains系のIDE
+.idea
+
+## Visual Studio Code
+.vscode
+
+## OS X
+.DS_Store
+
+## Docker
+.local
