@@ -23,3 +23,7 @@ out
 
 ## Docker
 .local
+
+# ------------- Localstack ------------- #
+
+data/
