@@ -39,3 +39,7 @@ func (*router) Delete(uri string, f http.HandlerFunc) {
 func (*router) UseMiddleware(f func(http.Handler) http.Handler) {
 	chiRouter.Use(f)
 }
+
+func (*router) Mount(uri string, h http.Handler) {
+	chiRouter.Mount(uri, h)
+}

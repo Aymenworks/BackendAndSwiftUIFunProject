@@ -11,4 +11,5 @@ type Router interface {
 	Put(uri string, f http.HandlerFunc)
 	Delete(uri string, f http.HandlerFunc)
 	UseMiddleware(f func(http.Handler) http.Handler)
+	Mount(uri string, h http.Handler)
 }

@@ -2,14 +2,20 @@ package main
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 
-	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/config"
+	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/config"
+	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/controllers"
+	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/domain/services/tips"
 	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/http/middlewares"
 	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/http/router"
+	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/http/router/chiroutes"
+	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/infra/databases"
+	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/infra/mysql"
 	"github.com/go-chi/chi/middleware"
 	"go.uber.org/zap"
 )
@@ -24,7 +30,7 @@ func main() {
 	// Log each request
 	router.UseMiddleware(middleware.DefaultLogger)
 
-	// TODO: Panic recover not working
+	// TODO: Check Panic recover not working
 	router.UseMiddleware(middlewares.PanicRecover)
 
 	// e.g `/hello` and `/hello/` will be the same
@@ -41,34 +47,19 @@ func main() {
 	router.UseMiddleware(middleware.Timeout(config.Middleware.Timeout))
 
 	// TODO: Instanciate development or production based on environment
-	logger, _ := zap.NewDevelopment()
-	defer logger.Sync() // TODO: Understand why it's required to do
-	sugar := logger.Sugar()
+	appLog := initAppLog()
+	zap.ReplaceGlobals(appLog)
+	defer appLog.Sync() // TODO: Understand why it's required to do
+	logger := appLog.Sugar()
 
-	router.Get("/hello", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Hello"))
-	}))
-
-	// router.Get("/slow-with-ctx-done", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	// 	sugar.Info("Start slow request\n")
-	// 	ctx := r.Context()
-	// 	processTime := time.Duration(7) * time.Second
-	// 	select {
-	// 	case <-ctx.Done():
-	// 		sugar.Infof("Context Done() / err %v \n", ctx.Err())
-	// 		return
-	// 	case <-time.After(processTime):
-	// 		sugar.Info("Request process after 7 seconds\n")
-	// 	}
-
-	// 	sugar.Info("Finish slow request\n")
-	// 	w.Write([]byte("done"))
-	// }))
+	// Config DB
+	db := databases.NewMySQLDatabase(config.DockerPort, config.Database)
 
 	// Run the server in a goroutine to avoid blocking the current thread
 	// so that we could allow listen for the shutdown signal right after
+	// TODO: Confirm for the timeout stuff after some routes are implemented
 	server := &http.Server{
-		Addr:              ":" + config.Port,
+		Addr:              ":" + config.Server.Port,
 		Handler:           router,
 		ReadHeaderTimeout: config.Server.ReadHeaderTimeout,
 		ReadTimeout:       config.Server.ReadTimeout,
@@ -76,9 +67,22 @@ func main() {
 		IdleTimeout:       config.Server.IdleTimeout,
 	}
 
+	// Setup repositories
+	tipsRepository := mysql.NewMysqlTipsRepository(db)
+
+	// Setup services
+	tipsService := tips.NewTipsService(tipsRepository)
+
+	// Setup controllers
+	profileController := controllers.NewTipsController(tipsService)
+
+	// Setup routes
+	router.Mount("/tips", chiroutes.Tips(profileController))
+
 	go func() {
+		logger.Debugf("HTTP server ListenAndServe: %v", server.Addr)
 		if err := server.ListenAndServe(); err != http.ErrServerClosed {
-			sugar.Fatalf("HTTP server ListenAndServe: %v", err)
+			logger.Fatalf("Error HTTP server ListenAndServe: %v", err)
 		}
 	}()
 
@@ -90,14 +94,24 @@ func main() {
 		os.Interrupt,
 	)
 
-	sugar.Infof("received shutdown signal %v\n", <-shutdownCh)
+	logger.Infof("received shutdown signal %v\n", <-shutdownCh)
 	// Use a context with a timeout in case the Shutdown takes too much time and block the process
 	// Canceling this context releases resources associated with it
 	ctx, cancel := context.WithTimeout(context.Background(), config.Server.ShutdownTimeout)
 	defer cancel()
 
-	sugar.Infof("Shutting down\n")
+	logger.Infof("Shutting down\n")
 	if err := server.Shutdown(ctx); err != nil {
-		sugar.Errorf("Error shutting down %v\n", err)
+		logger.Errorf("Error shutting down %v\n", err)
 	}
+}
+
+func initAppLog() *zap.Logger {
+	config := zap.NewDevelopmentConfig()
+	// TODO: Check if any config is useful
+	logger, err := config.Build()
+	if err != nil {
+		log.Fatalf("Could not init zap loggeer with err = %v", err)
+	}
+	return logger
 }

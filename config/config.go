@@ -6,14 +6,16 @@ import (
 )
 
 type Config struct {
-	Port       string
+	DockerPort string
+	Database   string
 	Server     ServerConfig
 	Middleware MiddlewareConfig
 }
 
 func New() *Config {
 	return &Config{
-		Port:       os.Getenv("SERVER_PORT"),
+		DockerPort: os.Getenv("COOKING_TIPS_DOCKER_PORT"),
+		Database:   os.Getenv("COOKING_TIPS_MYSQL_DATABASE"),
 		Server:     NewServerConfig(),
 		Middleware: NewMiddlewareConfig(),
 	}
