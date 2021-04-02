@@ -18,11 +18,20 @@ func NewTipsService(repository repositories.TipsRepository) Service {
 }
 
 func (s *TipsService) GetAll(ctx context.Context) (entities.Tips, error) {
-	return s.repository.GetAll(ctx)
+	return s.repository.GetAll()
 	// TODO: If errors, look if we get the full stack
 	// TODO: Implement stack trace error
 }
 
 func (s *TipsService) GetByID(ctx context.Context, id uint) (*entities.Tip, error) {
-	return s.repository.GetByID(ctx, id)
+	return s.repository.GetByID(id)
+}
+
+func (s *TipsService) Create(tip entities.Tip, ctx context.Context) (*entities.Tip, error) {
+	return s.repository.Create(tip)
+}
+
+func (s *TipsService) DeleteByID(id uint) error {
+	err := s.repository.DeleteByID(id)
+	return err
 }

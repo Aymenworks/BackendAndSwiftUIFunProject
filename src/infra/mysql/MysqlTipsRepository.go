@@ -1,8 +1,6 @@
 package mysql
 
 import (
-	"context"
-
 	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/domain/entities"
 	"gorm.io/gorm"
 )
@@ -17,7 +15,7 @@ func NewMysqlTipsRepository(db *gorm.DB) *MysqlTipsRepository {
 	}
 }
 
-func (r *MysqlTipsRepository) GetAll(ctx context.Context) (entities.Tips, error) {
+func (r *MysqlTipsRepository) GetAll() (entities.Tips, error) {
 	var tips entities.Tips
 	result := r.db.Find(&tips)
 	if result.Error != nil {
@@ -27,12 +25,26 @@ func (r *MysqlTipsRepository) GetAll(ctx context.Context) (entities.Tips, error)
 	return tips, nil
 }
 
-func (r *MysqlTipsRepository) GetByID(ctx context.Context, id uint) (*entities.Tip, error) {
+func (r *MysqlTipsRepository) GetByID(id uint) (*entities.Tip, error) {
 	var tip entities.Tip
-	result := r.db.Find(&tip, "id = ?", id)
+	result := r.db.Find(&tip, id)
 	if result.Error != nil {
 		return nil, result.Error
 	}
 
 	return &tip, nil
+}
+
+func (r *MysqlTipsRepository) Create(tip entities.Tip) (*entities.Tip, error) {
+	result := r.db.Create(&tip)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	return &tip, nil
+}
+
+func (r *MysqlTipsRepository) DeleteByID(id uint) error {
+	r.db.Delete(&entities.Tip{}, id)
+	return nil // TODO: check if it's possible to know whether some deletion happened?
 }
