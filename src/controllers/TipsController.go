@@ -38,7 +38,7 @@ func (c *TipsController) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tip, err := c.service.GetByID(r.Context(), uint(tipID))
+	tip, err := c.service.MustGetByID(r.Context(), uint(tipID))
 	if err != nil {
 		c.ErrorResponse(w, errors.Stack(err))
 		return

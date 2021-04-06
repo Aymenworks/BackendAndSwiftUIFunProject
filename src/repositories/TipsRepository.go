@@ -8,5 +8,5 @@ type TipsRepository interface {
 	Create(tip *entities.Tip) error
 	DeleteByID(id uint) error
 	GetAll() (entities.Tips, error)
-	GetByID(id uint) (*entities.Tip, error)
+	MustGetByID(id uint) (*entities.Tip, error)
 }

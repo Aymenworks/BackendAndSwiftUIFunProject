@@ -35,8 +35,8 @@ func (c *Controller) ErrorResponse(w http.ResponseWriter, err error) {
 
 	// TODO add context there looks at fields
 
-	apperr := errors.AsAppError(err)
 	zap.S().Error(err)
+	apperr := errors.AsAppError(err)
 	w.WriteHeader(apperr.HTTPStatusCode)
 
 	if err := json.NewEncoder(w).Encode(apperr.New()); err != nil {
@@ -47,7 +47,7 @@ func (c *Controller) ErrorResponse(w http.ResponseWriter, err error) {
 
 func (c *Controller) ParseBody(r *http.Request, req requests.AppRequest) error {
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil && err != io.EOF {
-		return errors.Wrap(errors.InvalidParameter, "error parse body")
+		return errors.Wrap(err, "error parse body")
 	}
 
 	err := req.Validate()

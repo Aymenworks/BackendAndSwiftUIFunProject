@@ -26,8 +26,8 @@ func (s *TipsService) GetAll(ctx context.Context) (entities.Tips, error) {
 	return tips, nil
 }
 
-func (s *TipsService) GetByID(ctx context.Context, id uint) (*entities.Tip, error) {
-	tip, err := s.repository.GetByID(id)
+func (s *TipsService) MustGetByID(ctx context.Context, id uint) (*entities.Tip, error) {
+	tip, err := s.repository.MustGetByID(id)
 	if err != nil {
 		return nil, errors.Wrap(err, "error get by id")
 	}
