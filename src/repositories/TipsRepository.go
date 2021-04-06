@@ -5,7 +5,7 @@ import (
 )
 
 type TipsRepository interface {
-	Create(tip entities.Tip) (*entities.Tip, error)
+	Create(tip *entities.Tip) error
 	DeleteByID(id uint) error
 	GetAll() (entities.Tips, error)
 	GetByID(id uint) (*entities.Tip, error)

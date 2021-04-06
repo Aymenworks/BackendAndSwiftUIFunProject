@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/domain/entities"
+	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/errors"
 	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/repositories"
 )
 
@@ -18,20 +19,35 @@ func NewTipsService(repository repositories.TipsRepository) Service {
 }
 
 func (s *TipsService) GetAll(ctx context.Context) (entities.Tips, error) {
-	return s.repository.GetAll()
-	// TODO: If errors, look if we get the full stack
-	// TODO: Implement stack trace error
+	tips, err := s.repository.GetAll()
+	if err != nil {
+		return nil, errors.Wrap(err, "error get all")
+	}
+	return tips, nil
 }
 
 func (s *TipsService) GetByID(ctx context.Context, id uint) (*entities.Tip, error) {
-	return s.repository.GetByID(id)
+	tip, err := s.repository.GetByID(id)
+	if err != nil {
+		return nil, errors.Wrap(err, "error get by id")
+	}
+	return tip, nil
 }
 
-func (s *TipsService) Create(tip entities.Tip, ctx context.Context) (*entities.Tip, error) {
-	return s.repository.Create(tip)
+func (s *TipsService) Create(ctx context.Context, name string) (*entities.Tip, error) {
+	tip := new(entities.Tip)
+	tip.Name = name
+	err := s.repository.Create(tip)
+	if err != nil {
+		return nil, errors.Wrap(err, "error create")
+	}
+	return tip, nil
 }
 
-func (s *TipsService) DeleteByID(id uint) error {
+func (s *TipsService) DeleteByID(ctx context.Context, id uint) error {
 	err := s.repository.DeleteByID(id)
-	return err
+	if err != nil {
+		return errors.Wrap(err, "error delete by id")
+	}
+	return nil
 }

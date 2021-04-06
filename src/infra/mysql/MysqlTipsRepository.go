@@ -35,13 +35,13 @@ func (r *MysqlTipsRepository) GetByID(id uint) (*entities.Tip, error) {
 	return &tip, nil
 }
 
-func (r *MysqlTipsRepository) Create(tip entities.Tip) (*entities.Tip, error) {
+func (r *MysqlTipsRepository) Create(tip *entities.Tip) error {
 	result := r.db.Create(&tip)
 	if result.Error != nil {
-		return nil, result.Error
+		return result.Error
 	}
 
-	return &tip, nil
+	return nil
 }
 
 func (r *MysqlTipsRepository) DeleteByID(id uint) error {

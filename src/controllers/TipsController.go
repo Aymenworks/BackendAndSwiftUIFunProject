@@ -6,8 +6,8 @@ import (
 
 	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/domain/services/tips"
 	requests "github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/entrypoints/requests/tips"
+	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/errors"
 	"github.com/go-chi/chi"
-	"go.uber.org/zap"
 )
 
 type TipsController struct {
@@ -38,7 +38,6 @@ func (c *TipsController) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	zap.S().Debugf("tipID = %v", tipID)
 	tip, err := c.service.GetByID(r.Context(), uint(tipID))
 	if err != nil {
 		c.ErrorResponse(w, err)
@@ -54,9 +53,14 @@ func (c *TipsController) Create(w http.ResponseWriter, r *http.Request) {
 		c.ErrorResponse(w, err)
 		return
 	}
-	zap.S().Debugf("request.name = %v", request.Name)
 
-	c.NoContentResponse(w)
+	tip, err := c.service.Create(r.Context(), request.Name)
+	if err != nil {
+		c.ErrorResponse(w, errors.Wrap(err, ""))
+		return
+	}
+
+	c.JsonResponse(w, tip)
 }
 
 func (c *TipsController) Delete(w http.ResponseWriter, r *http.Request) {
@@ -65,7 +69,8 @@ func (c *TipsController) Delete(w http.ResponseWriter, r *http.Request) {
 		c.ErrorResponse(w, err)
 		return
 	}
-	err = c.service.DeleteByID(id)
+
+	err = c.service.DeleteByID(r.Context(), id)
 	if err != nil {
 		c.ErrorResponse(w, err)
 		return

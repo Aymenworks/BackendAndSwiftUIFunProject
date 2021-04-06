@@ -16,7 +16,7 @@ type CreateTipRequest struct {
 
 func (r *CreateTipRequest) Validate() error {
 	if utils.IsEmpty(r.Name) {
-		return errors.TipNameInvalid.New()
+		return errors.TipNameInvalid
 	}
 	return nil
 }
