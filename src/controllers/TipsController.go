@@ -24,7 +24,7 @@ func NewTipsController(service tips.Service) *TipsController {
 func (c *TipsController) GetAll(w http.ResponseWriter, r *http.Request) {
 	tips, err := c.service.GetAll(r.Context())
 	if err != nil {
-		c.ErrorResponse(w, err)
+		c.ErrorResponse(w, errors.Wrap(err, ""))
 		return
 	}
 
@@ -34,13 +34,13 @@ func (c *TipsController) GetAll(w http.ResponseWriter, r *http.Request) {
 func (c *TipsController) Get(w http.ResponseWriter, r *http.Request) {
 	tipID, err := strconv.ParseUint(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
-		c.ErrorResponse(w, err)
+		c.ErrorResponse(w, errors.Wrap(err, ""))
 		return
 	}
 
 	tip, err := c.service.GetByID(r.Context(), uint(tipID))
 	if err != nil {
-		c.ErrorResponse(w, err)
+		c.ErrorResponse(w, errors.Wrap(err, ""))
 		return
 	}
 
@@ -66,13 +66,13 @@ func (c *TipsController) Create(w http.ResponseWriter, r *http.Request) {
 func (c *TipsController) Delete(w http.ResponseWriter, r *http.Request) {
 	id, err := c.PathParameterUint(r, "id")
 	if err != nil {
-		c.ErrorResponse(w, err)
+		c.ErrorResponse(w, errors.Wrap(err, ""))
 		return
 	}
 
 	err = c.service.DeleteByID(r.Context(), id)
 	if err != nil {
-		c.ErrorResponse(w, err)
+		c.ErrorResponse(w, errors.Wrap(err, ""))
 		return
 	}
 
