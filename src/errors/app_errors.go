@@ -89,3 +89,19 @@ func Wrap(err error, msg string) error {
 
 	return fmt.Errorf("%w %s", err, s)
 }
+
+func Stack(err error) error {
+	if err == nil {
+		return err
+	}
+
+	pc := make([]uintptr, 1)
+	// Skip the first 2 because the first one is the internal system and the second is this method itself, but we are interested by the ones just before
+	n := runtime.Callers(2, pc)
+	frames := runtime.CallersFrames(pc[:n])
+	frame, _ := frames.Next()
+
+	s := fmt.Sprintf("%v:%d %v\n", frame.File, frame.Line, frame.Function)
+
+	return fmt.Errorf("%w %s", err, s)
+}
