@@ -34,9 +34,11 @@ func (s *TipsService) MustGetByID(ctx context.Context, id uint) (*entities.Tip, 
 	return tip, nil
 }
 
-func (s *TipsService) Create(ctx context.Context, name string) (*entities.Tip, error) {
-	tip := new(entities.Tip)
-	tip.Name = name
+func (s *TipsService) Create(ctx context.Context, name, path string) (*entities.Tip, error) {
+	tip := &entities.Tip{
+		Name:      name,
+		ImagePath: path,
+	}
 	err := s.repository.Create(tip)
 	if err != nil {
 		return nil, errors.Wrap(err, "error create")

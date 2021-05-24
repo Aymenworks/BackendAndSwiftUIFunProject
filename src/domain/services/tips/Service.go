@@ -9,6 +9,6 @@ import (
 type Service interface {
 	GetAll(ctx context.Context) (entities.Tips, error)
 	MustGetByID(ctx context.Context, id uint) (*entities.Tip, error)
-	Create(ctx context.Context, name string) (*entities.Tip, error)
+	Create(ctx context.Context, name, path string) (*entities.Tip, error)
 	DeleteByID(ctx context.Context, id uint) error
 }

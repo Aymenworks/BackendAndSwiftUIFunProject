@@ -8,20 +8,20 @@ import (
 	"os/signal"
 	"syscall"
 
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	awss3 "github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/config"
 	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/controllers"
 	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/domain/services/tips"
 	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/entrypoints/router"
 	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/entrypoints/router/chiroutes"
 	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/http/middlewares"
+	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/infra/caches"
 	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/infra/databases"
 	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/infra/mysql"
 	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/infra/s3"
 	"github.com/go-chi/chi/middleware"
 	"go.uber.org/zap"
-
-	awsconfig "github.com/aws/aws-sdk-go-v2/config"
-	awss3 "github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
 func main() {
@@ -69,6 +69,13 @@ func main() {
 		IdleTimeout:       config.Server.IdleTimeout,
 	}
 
+	// Setup redis
+	cacheClt := caches.NewRedisCache()
+
+	if err = cacheClt.Ping(); err != nil {
+		logger.Errorw("Redis client could not ping", "err", err)
+	}
+
 	// Setup repositories
 	tipsRepository := mysql.NewMysqlTipsRepository(db)
 
@@ -77,10 +84,12 @@ func main() {
 	tipsService := tips.NewTipsService(tipsRepository)
 
 	// Setup controllers
-	profileController := controllers.NewTipsController(tipsService, imageUploader)
+	tipsController := controllers.NewTipsController(tipsService, imageUploader)
+	profileController := controllers.NewProfileController(cacheClt)
 
 	// Setup routes
-	router.Mount("/tips", chiroutes.Tips(profileController))
+	router.Mount("/tips", chiroutes.Tips(tipsController))
+	router.Mount("/profile", chiroutes.Profile(profileController))
 
 	go func() {
 		logger.Debugf("HTTP server ListenAndServe: %v", server.Addr)

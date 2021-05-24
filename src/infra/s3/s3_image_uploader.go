@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"io/ioutil"
 	"mime/multipart"
 	"os"
 	"path"
@@ -62,16 +61,32 @@ func (u *S3ImageUploader) UploadWithBase64(imageB64Data []byte) (string, error) 
 	filename := hash(salt + time.Now().String())
 	filepath := path.Join(tipsDir, filename)
 
-	file, err := ioutil.TempFile("", filename)
+	file, err := os.CreateTemp("", filename)
 	if err != nil {
 		return "", errors.Stack(fmt.Errorf("error creating filename %v %w", file, err))
 	}
+	// defer func() {
+	// 	zap.S().Info("Closing file")
+	// 	err = file.Close()
+	// 	if err != nil {
+	// 		zap.S().Errorf("Error closing file %w", err)
+	// 	}
+	// 	zap.S().Info("Removing file")
+	// 	err = os.Remove(file.Name())
+	// 	if err != nil {
+	// 		zap.S().Errorf("Error removing file %w", err)
+	// 	}
+	// }()
+
 	defer func() {
 		zap.S().Info("Closing file")
 		err = file.Close()
 		if err != nil {
 			zap.S().Errorf("Error closing file %w", err)
 		}
+	}()
+
+	defer func() {
 		zap.S().Info("Removing file")
 		err = os.Remove(file.Name())
 		if err != nil {

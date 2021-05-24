@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
 	"strconv"
 
@@ -43,6 +44,16 @@ func (c *Controller) ErrorResponse(w http.ResponseWriter, err error) {
 		zap.S().Errorf("Error encoding error response %v", err)
 		return
 	}
+}
+
+func (c *Controller) ParseContentTypeHeader(r *http.Request) (string, error) {
+	ct := r.Header.Get("Content-type")
+	t, _, err := mime.ParseMediaType(ct)
+	if err != nil {
+		return "", errors.Wrap(err, fmt.Sprintf("error parsing content media type %v", ct))
+	}
+
+	return t, nil
 }
 
 func (c *Controller) ParseBody(r *http.Request, req requests.AppRequest) error {

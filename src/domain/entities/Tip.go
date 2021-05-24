@@ -12,6 +12,7 @@ type Tip struct {
 	UpdatedAt time.Time      `json:"-"`
 	DeletedAt gorm.DeletedAt `json:"-"`
 	Name      string         `json:"name"`
+	ImagePath string         `json:"image_path"`
 }
 
 type Tips []*Tip

@@ -22,9 +22,14 @@ services:
   lstack-mysql:
     container_name: localstack-db
     image: mysql:5.7
-    env_file:
-      - .env
     ports:
       - "4306:3306"
     volumes:
       - .local/mysql5.7:/var/lib/mysql
+  redis:
+    container_name: localstack-redis
+    image: redis:6.2.3
+    ports:
+      - "6379:6379"
+    volumes:
+      - ".local/redis6.2.3:/data"
