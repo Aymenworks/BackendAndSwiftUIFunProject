@@ -10,6 +10,7 @@ type Config struct {
 	Database   string
 	Server     ServerConfig
 	Middleware MiddlewareConfig
+	Security   SecurityConfig
 }
 
 func New() *Config {
@@ -18,6 +19,7 @@ func New() *Config {
 		Database:   os.Getenv("COOKING_TIPS_MYSQL_DATABASE"),
 		Server:     NewServerConfig(),
 		Middleware: NewMiddlewareConfig(),
+		Security:   NewSecurityConfig(),
 	}
 }
 
@@ -50,5 +52,15 @@ func NewMiddlewareConfig() MiddlewareConfig {
 	return MiddlewareConfig{
 		Timeout:          10 * time.Second,
 		RequestSizeLimit: 1e+7, // 10MB
+	}
+}
+
+type SecurityConfig struct {
+	HMACKey string
+}
+
+func NewSecurityConfig() SecurityConfig {
+	return SecurityConfig{
+		HMACKey: os.Getenv("HMAC_KEY"),
 	}
 }
