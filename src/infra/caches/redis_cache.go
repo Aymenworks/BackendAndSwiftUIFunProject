@@ -14,6 +14,7 @@ func NewRedisCache() Cache {
 }
 
 var (
+	// TODO: use env variable
 	redisClt = redis.NewClient(&redis.Options{
 		Addr:     "localhost:6379",
 		Password: "",

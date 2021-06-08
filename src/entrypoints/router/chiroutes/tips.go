@@ -8,7 +8,7 @@ import (
 )
 
 func Tips(ctrl *controllers.TipsController) http.Handler {
-	// TODO: if trying to access a route that doesn't exist, 405 is returned by default but should it be 404?
+	// TODO: all requires auth token
 	r := chi.NewRouter()
 	r.Get("/", ctrl.GetAll)
 	r.Post("/", ctrl.Create)

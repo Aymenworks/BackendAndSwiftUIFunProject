@@ -54,6 +54,13 @@ func newBadRequest(code, msg string) *appError {
 	}
 }
 
+func newUnauthorizedRequest(code, msg string) *appError {
+	return &appError{
+		Message:        msg,
+		HTTPStatusCode: http.StatusUnauthorized,
+	}
+}
+
 func newInternalError(code, msg string) *appError {
 	return &appError{
 		Message:        msg,

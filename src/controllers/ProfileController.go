@@ -18,6 +18,7 @@ func NewProfileController(cacheClt caches.Cache) *ProfileController {
 		cacheClt: cacheClt,
 	}
 }
+
 func (c *ProfileController) Get(w http.ResponseWriter, r *http.Request) {
 	cache, err := c.cacheClt.Get(r.Context(), "profile")
 	if err != nil {

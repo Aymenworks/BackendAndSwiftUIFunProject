@@ -56,11 +56,11 @@ func NewMiddlewareConfig() MiddlewareConfig {
 }
 
 type SecurityConfig struct {
-	HMACKey string
+	HMAC512Key string
 }
 
 func NewSecurityConfig() SecurityConfig {
 	return SecurityConfig{
-		HMACKey: os.Getenv("HMAC_KEY"),
+		HMAC512Key: os.Getenv("HMAC512_KEY"),
 	}
 }

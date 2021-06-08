@@ -13,6 +13,7 @@ import (
 	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/config"
 	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/controllers"
 	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/domain/services/tips"
+	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/domain/services/user"
 	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/entrypoints/router"
 	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/entrypoints/router/chiroutes"
 	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/http/middlewares"
@@ -20,6 +21,7 @@ import (
 	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/infra/databases"
 	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/infra/mysql"
 	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/infra/s3"
+	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/security"
 	"github.com/go-chi/chi/middleware"
 	"go.uber.org/zap"
 )
@@ -76,21 +78,32 @@ func main() {
 		logger.Errorw("Redis client could not ping", "err", err)
 	}
 
+	// Setup security
+	securityClient := security.NewSecurityClient(config.Security)
+
 	// Setup repositories
 	tipsRepository := mysql.NewMysqlTipsRepository(db)
+	userRepository := mysql.NewMysqlUserRepository(db)
 
 	// Setup services
 	imageUploader := s3.NewS3ImageUploader(s3svc)
+	userService := user.NewUserService(userRepository)
 	tipsService := tips.NewTipsService(tipsRepository)
 
 	// Setup controllers
+	authenticationController := controllers.NewAuthenticationController(userService, securityClient)
 	tipsController := controllers.NewTipsController(tipsService, imageUploader)
 	profileController := controllers.NewProfileController(cacheClt)
 
 	// Setup routes
+	// TODO: should not be authorized if there is an existing token
+	router.Post("/login", authenticationController.Login)
+	// TODO: should not be authorized if not logged in
 	router.Mount("/tips", chiroutes.Tips(tipsController))
+	// TODO: should not be authorized if not logged in
 	router.Mount("/profile", chiroutes.Profile(profileController))
-
+	// TODO: should not be authorized if not logged in
+	router.Mount("/auth", chiroutes.Auth(authenticationController))
 	go func() {
 		logger.Debugf("HTTP server ListenAndServe: %v", server.Addr)
 		if err := server.ListenAndServe(); err != http.ErrServerClosed {
