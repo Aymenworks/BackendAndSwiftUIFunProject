@@ -36,7 +36,7 @@ func (c *AuthenticationController) Login(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	err = c.securityClient.VerifyPassword(u.Password, req.Password)
+	err = c.securityClient.VerifyPassword(u.HashedPassword, req.Password)
 	if err != nil {
 		c.ErrorResponse(w, errors.Stack(errors.IncorrectCredentials))
 		return
@@ -58,10 +58,15 @@ func (c *AuthenticationController) Signup(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	_, err := c.userSvc.MustGetByUsername(r.Context(), req.Username)
+	u, err := c.userSvc.GetByUsername(r.Context(), req.Username)
 	if err != nil {
 		// TODO: handle appriopriately the error
 		c.ErrorResponse(w, err)
+		return
+	}
+
+	if u != nil {
+		c.ErrorResponse(w, errors.UsernameAlreadyAssigned)
 		return
 	}
 

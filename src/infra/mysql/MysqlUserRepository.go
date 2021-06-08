@@ -21,9 +21,9 @@ func NewMysqlUserRepository(db *gorm.DB) *MysqlUserRepository {
 
 func (r *MysqlUserRepository) Create(ctx context.Context, uuid, username, password string) (*entities.User, error) {
 	u := &entities.User{
-		UUID:     uuid,
-		Username: username,
-		Password: password,
+		UUID:           uuid,
+		Username:       username,
+		HashedPassword: password,
 	}
 
 	if err := r.db.Create(&u).Error; err != nil {

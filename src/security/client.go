@@ -42,7 +42,9 @@ func (c *client) VerifyPassword(hp, p string) error {
 }
 
 func (c *client) GenerateJWTToken(uuid string) (string, error) {
-	signature, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.HS512, Key: c.securityConfig.HMAC512Key}, (&jose.SignerOptions{}).WithType("JWT"))
+	zap.S().Infof("KEY c.securityConfig.HMAC512Key %v", c.securityConfig.HMAC512Key)
+
+	signature, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.HS512, Key: []byte(c.securityConfig.HMAC512Key)}, (&jose.SignerOptions{}).WithType("JWT"))
 	if err != nil {
 		return "", errors.Wrap(err, "signature")
 	}
