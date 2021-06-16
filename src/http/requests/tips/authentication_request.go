@@ -35,3 +35,14 @@ func (r *LoginRequest) Validate() error {
 	}
 	return nil
 }
+
+type RefreshToken struct {
+	Token string `json:"token"`
+}
+
+func (r *RefreshToken) Validate() error {
+	if utils.IsEmpty(r.Token) {
+		return errors.RefreshTokenEmpty
+	}
+	return nil
+}

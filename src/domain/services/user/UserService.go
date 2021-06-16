@@ -5,17 +5,20 @@ import (
 
 	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/domain/entities"
 	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/errors"
+	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/infra/caches"
 	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/repositories"
 	"github.com/google/uuid"
 )
 
 type UserService struct {
 	repository repositories.UserRepository
+	cacheClt   caches.Cache
 }
 
-func NewUserService(repository repositories.UserRepository) Service {
+func NewUserService(repository repositories.UserRepository, cacheClt caches.Cache) Service {
 	return &UserService{
 		repository: repository,
+		cacheClt:   cacheClt,
 	}
 }
 
@@ -46,4 +49,16 @@ func (s *UserService) GetByUsername(ctx context.Context, username string) (*enti
 		return nil, errors.Stack(err)
 	}
 	return u, nil
+}
+
+func (s *UserService) VerifyAccessToken(ctx context.Context, uuid string) bool {
+	key := "access_token:" + uuid
+	t, err := s.cacheClt.Get(ctx, key)
+	if err != nil {
+		return false
+	}
+	if t == nil {
+		return false
+	}
+	return true
 }

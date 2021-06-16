@@ -38,6 +38,10 @@ func (c *client) Set(ctx context.Context, k string, v interface{}, d time.Durati
 	return redisClt.Set(ctx, k, v, d).Err()
 }
 
+func (c *client) Delete(ctx context.Context, k string) error {
+	return redisClt.Del(ctx, k).Err()
+}
+
 func (c *client) Ping() error {
 	return redisClt.Ping(context.Background()).Err()
 }

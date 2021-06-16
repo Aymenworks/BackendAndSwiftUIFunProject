@@ -8,12 +8,12 @@ import (
 	"net/http"
 	"strconv"
 
-	requests "github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/entrypoints/requests/tips"
+	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/api"
 	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/errors"
+	requests "github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/http/requests/tips"
 
 	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/utils"
 	"github.com/go-chi/chi"
-	"go.uber.org/zap"
 )
 
 type Controller struct {
@@ -32,18 +32,7 @@ func (c *Controller) NoContentResponse(w http.ResponseWriter) {
 }
 
 func (c *Controller) ErrorResponse(w http.ResponseWriter, err error) {
-	w.Header().Set("Content-Type", "application/json")
-
-	// TODO add context there looks at fields
-
-	zap.S().Error(err)
-	apperr := errors.AsAppError(err)
-	w.WriteHeader(apperr.HTTPStatusCode)
-
-	if err := json.NewEncoder(w).Encode(apperr.New()); err != nil {
-		zap.S().Errorf("Error encoding error response %v", err)
-		return
-	}
+	api.ErrorResponse(w, err)
 }
 
 func (c *Controller) ParseContentTypeHeader(r *http.Request) (string, error) {

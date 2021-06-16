@@ -9,8 +9,8 @@ import (
 
 	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/domain/entities"
 	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/domain/services/tips"
-	requests "github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/entrypoints/requests/tips"
 	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/errors"
+	requests "github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/http/requests/tips"
 	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/infra/s3"
 	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/utils"
 	"github.com/go-chi/chi"
@@ -101,7 +101,7 @@ func (c *TipsController) createWithMultipart(ctx context.Context, r *http.Reques
 	if err != nil {
 		switch err {
 		case http.ErrMissingFile:
-			return nil, errors.Wrap(errors.InvalidParameter, fmt.Sprintf("%w", err))
+			return nil, errors.Wrap(errors.InvalidParameter, fmt.Sprintf("%v", err))
 		default:
 			return nil, errors.Stack(err)
 		}
