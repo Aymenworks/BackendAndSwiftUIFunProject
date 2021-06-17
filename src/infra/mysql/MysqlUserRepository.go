@@ -47,3 +47,18 @@ func (r *MysqlUserRepository) GetByUsername(ctx context.Context, username string
 
 	return u, nil
 }
+
+func (r *MysqlUserRepository) MustGetByUUID(ctx context.Context, uuid string) (*entities.User, error) {
+	var u *entities.User
+	if err := r.db.
+		Where("uuid = ?", uuid).
+		First(&u).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		} else {
+			return nil, apperrors.Stack(err)
+		}
+	}
+
+	return u, nil
+}

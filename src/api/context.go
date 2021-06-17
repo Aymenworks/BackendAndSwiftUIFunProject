@@ -2,7 +2,8 @@ package api
 
 import (
 	"context"
-	"fmt"
+
+	"go.uber.org/zap"
 )
 
 type ContextKey string
@@ -36,7 +37,6 @@ func AccessTokenUUID(ctx context.Context) string {
 
 func handleUnsetValue(ok bool, name string) {
 	if !ok {
-		msg := fmt.Sprintf("fatal context error: %s not set", name)
-		panic(msg)
+		zap.S().Panicf("fatal context error: %s not set", name)
 	}
 }

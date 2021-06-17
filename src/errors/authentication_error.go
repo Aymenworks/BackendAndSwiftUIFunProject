@@ -8,4 +8,5 @@ var (
 	UsernameAlreadyAssigned = newBadRequest("auth_username_already_assigned", "Username is already assigned")
 	TokenNotSet             = newUnauthorizedRequest("token_not_set", "Token is not set")
 	TokenInvalid            = newUnauthorizedRequest("token_invalid", "Token invalid")
+	TokenNotFound           = newUnauthorizedRequest("token_not_found", "Token not found")
 )

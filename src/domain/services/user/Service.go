@@ -11,4 +11,5 @@ type Service interface {
 	VerifyAccessToken(ctx context.Context, uuid string) bool
 	GetByUsername(ctx context.Context, username string) (*entities.User, error)
 	MustGetByUsername(ctx context.Context, username string) (*entities.User, error)
+	MustGetByUUID(ctx context.Context, uuid string) (*entities.User, error)
 }

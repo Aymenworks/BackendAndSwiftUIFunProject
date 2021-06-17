@@ -18,7 +18,8 @@ type SecurityClient interface {
 	HashPassword(p string) (string, error)
 	VerifyPassword(hp, p string) error
 	GenerateJWTToken(expiry time.Time, userUUID string) (*JWTToken, error)
-	VerifyJWTToken(r *http.Request) (*PrivateClaimsJWT, error)
+	VerifyJWTTokenFromRequest(r *http.Request) (*PrivateClaimsJWT, error)
+	VerifyJWTTokenFromString(t string) (*PrivateClaimsJWT, error)
 }
 
 type client struct {
@@ -55,7 +56,17 @@ type JWTToken struct {
 }
 
 func (c *client) GenerateJWTToken(expiry time.Time, userUUID string) (*JWTToken, error) {
-	signature, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.HS512, Key: []byte(c.securityConfig.HMAC512Key)}, (&jose.SignerOptions{}).WithType("JWT"))
+	enc, err := jose.NewEncrypter(
+		jose.A128GCM, // content encryption algo
+		jose.Recipient{
+			Algorithm: jose.DIRECT,
+			Key:       []byte(c.securityConfig.JWTEncryptionKey),
+		},
+		(&jose.EncrypterOptions{}).WithType("JWT").WithContentType("JWT"))
+	if err != nil {
+		return nil, errors.Stack(err)
+	}
+	signature, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.HS512, Key: []byte(c.securityConfig.JWTSignatureHMAC512Key)}, (&jose.SignerOptions{}).WithType("JWT"))
 	if err != nil {
 		return nil, errors.Stack(err)
 	}
@@ -72,7 +83,7 @@ func (c *client) GenerateJWTToken(expiry time.Time, userUUID string) (*JWTToken,
 		UserUUID: userUUID,
 	}
 
-	raw, err := jwt.Signed(signature).Claims(cl).Claims(pcl).CompactSerialize()
+	raw, err := jwt.SignedAndEncrypted(signature, enc).Claims(cl).Claims(pcl).CompactSerialize()
 	if err != nil {
 		return nil, errors.Stack(err)
 	}
@@ -93,20 +104,25 @@ type PrivateClaimsJWT struct {
 }
 
 func (c *client) verifyJSONWebToken(ts string) (*PrivateClaimsJWT, error) {
-	t, err := jwt.ParseSigned(ts)
+	nestedTkn, err := jwt.ParseSignedAndEncrypted(ts)
 	if err != nil {
-		return nil, errors.Stack(err)
+		return nil, errors.Wrap(errors.TokenInvalid, err.Error())
+	}
+
+	t, err := nestedTkn.Decrypt([]byte(c.securityConfig.JWTEncryptionKey))
+	if err != nil {
+		return nil, errors.Wrap(errors.TokenInvalid, err.Error())
 	}
 
 	if !c.containsAlgorithm(t.Headers, jose.HS512) {
-		return nil, errors.TokenInvalid
+		return nil, errors.Wrap(errors.TokenInvalid, "algorithm invalid")
 	}
 
 	cl := jwt.Claims{}
 	pcl := new(PrivateClaimsJWT)
 
-	if err := t.Claims([]byte(c.securityConfig.HMAC512Key), &cl, &pcl); err != nil {
-		return nil, errors.Stack(err)
+	if err := t.Claims([]byte(c.securityConfig.JWTSignatureHMAC512Key), &cl, &pcl); err != nil {
+		return nil, errors.Wrap(errors.TokenInvalid, err.Error())
 	}
 
 	// TODO: test expiry that is correctly validated
@@ -115,7 +131,7 @@ func (c *client) verifyJSONWebToken(ts string) (*PrivateClaimsJWT, error) {
 		Issuer:  "aymen",
 		Time:    time.Now(),
 	}, 0); err != nil {
-		return nil, errors.Stack(err)
+		return nil, errors.Wrap(errors.TokenInvalid, err.Error())
 	}
 
 	if utils.IsEmpty(pcl.UUID) || utils.IsEmpty(pcl.UserUUID) {
@@ -146,12 +162,20 @@ func (c *client) extractToken(r *http.Request) string {
 	return splt[1]
 }
 
-func (c *client) VerifyJWTToken(r *http.Request) (*PrivateClaimsJWT, error) {
+func (c *client) VerifyJWTTokenFromRequest(r *http.Request) (*PrivateClaimsJWT, error) {
 	et := c.extractToken(r)
 	if utils.IsEmpty(et) {
 		return nil, errors.TokenNotSet
 	}
 	pcl, err := c.verifyJSONWebToken(et)
+	if err != nil {
+		return nil, errors.Stack(err)
+	}
+	return pcl, nil
+}
+
+func (c *client) VerifyJWTTokenFromString(t string) (*PrivateClaimsJWT, error) {
+	pcl, err := c.verifyJSONWebToken(t)
 	if err != nil {
 		return nil, errors.Stack(err)
 	}

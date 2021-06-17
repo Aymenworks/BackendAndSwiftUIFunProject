@@ -104,7 +104,6 @@ func main() {
 		r.Mount("/tips", chiroutes.Tips(tipsController))
 		r.Mount("/profile", chiroutes.Profile(profileController))
 		r.Post("/auth/logout", authenticationController.Logout)
-		r.Get("/refresh-token", authenticationController.RefreshToken)
 	})
 
 	// Doesn't requires authentication
@@ -112,6 +111,8 @@ func main() {
 		r.Route("/auth", func(rr chi.Router) {
 			rr.Post("/login", authenticationController.Login)
 			rr.Post("/signup", authenticationController.Signup)
+			rr.Post("/refresh-token", authenticationController.RefreshToken)
+
 		})
 	})
 

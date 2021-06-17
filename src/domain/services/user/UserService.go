@@ -8,6 +8,7 @@ import (
 	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/infra/caches"
 	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/repositories"
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 )
 
 type UserService struct {
@@ -51,14 +52,25 @@ func (s *UserService) GetByUsername(ctx context.Context, username string) (*enti
 	return u, nil
 }
 
+func (s *UserService) MustGetByUUID(ctx context.Context, uuid string) (*entities.User, error) {
+	u, err := s.repository.MustGetByUUID(ctx, uuid)
+	if err != nil {
+		return nil, errors.Stack(err)
+	}
+	return u, nil
+}
+
 func (s *UserService) VerifyAccessToken(ctx context.Context, uuid string) bool {
 	key := "access_token:" + uuid
 	t, err := s.cacheClt.Get(ctx, key)
 	if err != nil {
+		zap.S().Info("VerifyAccessToken return false")
 		return false
 	}
 	if t == nil {
+		zap.S().Info("VerifyAccessToken return false")
 		return false
 	}
+	zap.S().Info("VerifyAccessToken return true")
 	return true
 }

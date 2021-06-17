@@ -12,6 +12,7 @@ import (
 	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/http/responses"
 	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/infra/caches"
 	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/security"
+	"go.uber.org/zap"
 )
 
 type AuthenticationController struct {
@@ -31,14 +32,30 @@ func NewAuthenticationController(userSvc user.Service, securityClient security.S
 
 func (c *AuthenticationController) Logout(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+
+	acRtUUID, err := c.cacheClt.Get(r.Context(), fmt.Sprintf("access_token:%v", api.AccessTokenUUID(ctx)))
+	if err != nil {
+		c.ErrorResponse(w, err)
+		return
+	}
+
+	// Delete refresh token
+	acRtUUIDString, ok := acRtUUID.(string)
+	if ok {
+		if err := c.cacheClt.Delete(ctx, fmt.Sprintf("refresh_token:%v", acRtUUIDString)); err != nil {
+			c.ErrorResponse(w, errors.Stack(err))
+			return
+		}
+	} else {
+		zap.S().Errorf("Could not delete the refresh token: cast to string error")
+	}
+
+	// delete access token
 	if err := c.cacheClt.Delete(ctx, fmt.Sprintf("access_token:%v", api.AccessTokenUUID(ctx))); err != nil {
 		c.ErrorResponse(w, errors.Stack(err))
 		return
 	}
-	if err := c.cacheClt.Delete(ctx, fmt.Sprintf("refresh_token:%v", api.AccessTokenUUID(ctx))); err != nil {
-		c.ErrorResponse(w, errors.Stack(err))
-		return
-	}
+
 	c.NoContentResponse(w)
 }
 
@@ -62,10 +79,9 @@ func (c *AuthenticationController) Login(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	now := time.Now()
-
 	// TODO: Try to encrypt UUID for private I guess
-	at, err := c.securityClient.GenerateJWTToken(now.Add(time.Minute*15), u.UUID)
+	now := time.Now()
+	at, err := c.securityClient.GenerateJWTToken(now.Add(time.Second*20), u.UUID)
 	if err != nil {
 		c.ErrorResponse(w, errors.Stack(err))
 		return
@@ -76,12 +92,11 @@ func (c *AuthenticationController) Login(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if err = c.cacheClt.Set(r.Context(), fmt.Sprintf("access_token:%v", at.UUID), at.UUID, at.Expiry.Sub(now)); err != nil {
+	if err = c.cacheClt.Set(r.Context(), fmt.Sprintf("access_token:%v", at.UUID), rt.UUID, at.Expiry.Sub(now)); err != nil {
 		c.ErrorResponse(w, errors.Stack(err))
 		return
 	}
-	// find a better way to delete the refresh token
-	if err = c.cacheClt.Set(r.Context(), fmt.Sprintf("refresh_token:%v", at.UUID), at.UUID, rt.Expiry.Sub(now)); err != nil {
+	if err = c.cacheClt.Set(r.Context(), fmt.Sprintf("refresh_token:%v", rt.UUID), at.UUID, rt.Expiry.Sub(now)); err != nil {
 		_ = c.cacheClt.Delete(r.Context(), fmt.Sprintf("access_token:%v", at.UUID))
 		c.ErrorResponse(w, errors.Stack(err))
 		return
@@ -139,11 +154,65 @@ func (c *AuthenticationController) RefreshToken(w http.ResponseWriter, r *http.R
 		c.ErrorResponse(w, err)
 		return
 	}
+	pcl, err := c.securityClient.VerifyJWTTokenFromString(req.Token)
+	if err != nil {
+		c.ErrorResponse(w, err)
+		return
+	}
+	rtAcUUID, err := c.cacheClt.Get(r.Context(), fmt.Sprintf("refresh_token:%v", pcl.UUID))
+	if err != nil {
+		c.ErrorResponse(w, err)
+		return
+	}
+	if rtAcUUID == nil {
+		c.ErrorResponse(w, errors.TokenNotFound)
+		return
+	}
+	// Create new tokens
+	// TODO: Try to encrypt UUID for private I guess
+	zap.S().Debugf("pcl.UserUUID = %v", pcl.UserUUID)
+	now := time.Now()
+	at, err := c.securityClient.GenerateJWTToken(now.Add(time.Minute*15), pcl.UserUUID)
+	if err != nil {
+		c.ErrorResponse(w, errors.Stack(err))
+		return
+	}
+	rt, err := c.securityClient.GenerateJWTToken(now.Add(time.Hour*24*7), pcl.UserUUID)
+	if err != nil {
+		c.ErrorResponse(w, errors.Stack(err))
+		return
+	}
+	// Delete old access token
+	ctx := r.Context()
+	rtAcUUIDString, ok := rtAcUUID.(string)
+	if ok {
+		zap.S().Debugf("rtAcUUIDString = %v", rtAcUUIDString)
+		if err := c.cacheClt.Delete(ctx, fmt.Sprintf("access_token:%v", rtAcUUIDString)); err != nil {
+			c.ErrorResponse(w, errors.Stack(err))
+			return
+		}
+	}
+	// delete old refresh token
+	if err := c.cacheClt.Delete(ctx, fmt.Sprintf("refresh_token:%v", pcl.UUID)); err != nil {
+		c.ErrorResponse(w, errors.Stack(err))
+		return
+	}
 
-	v, err := c.cacheClt.Get(r.Context(), fmt.Sprintf("refresh_token:%v", api.AccessTokenUUID()))
-	// TODO:
-	// - use the Login service after having parsed some credentials, ideally hashed as well on the client side.
-	// - check with the hashed credentials in the db whether it match or return StatusUnauthorized with least detail possible on the error message
-	// - if OK, create the token, save the token in redis, return it to the user
-	c.NoContentResponse(w)
+	// Save the new tokens
+	if err = c.cacheClt.Set(r.Context(), fmt.Sprintf("access_token:%v", at.UUID), rt.UUID, at.Expiry.Sub(now)); err != nil {
+		c.ErrorResponse(w, errors.Stack(err))
+		return
+	}
+	if err = c.cacheClt.Set(r.Context(), fmt.Sprintf("refresh_token:%v", rt.UUID), at.UUID, rt.Expiry.Sub(now)); err != nil {
+		_ = c.cacheClt.Delete(r.Context(), fmt.Sprintf("access_token:%v", at.UUID))
+		c.ErrorResponse(w, errors.Stack(err))
+		return
+	}
+
+	res := &responses.SessionToken{
+		AccessToken:  at.Token,
+		RefreshToken: rt.Token,
+	}
+
+	c.JsonResponse(w, res)
 }

@@ -12,9 +12,14 @@ import (
 func AuthenticatedOnly(secClient security.SecurityClient, verifyAccessToken func(ctx context.Context, uuid string) bool) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			pcl, err := secClient.VerifyJWTToken(r)
+			pcl, err := secClient.VerifyJWTTokenFromRequest(r)
 			if err != nil {
 				api.ErrorResponse(w, errors.Wrap(errors.TokenInvalid, err.Error()))
+				return
+			}
+			v := verifyAccessToken(r.Context(), pcl.UUID)
+			if !v {
+				api.ErrorResponse(w, errors.Wrap(errors.TokenNotFound, err.Error()))
 				return
 			}
 			ctx := r.Context()
