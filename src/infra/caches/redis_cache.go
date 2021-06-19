@@ -14,6 +14,7 @@ func NewRedisCache() Cache {
 }
 
 var (
+	// TODO: use env variable
 	redisClt = redis.NewClient(&redis.Options{
 		Addr:     "localhost:6379",
 		Password: "",
@@ -35,6 +36,10 @@ func (c *client) Get(ctx context.Context, k string) (interface{}, error) {
 
 func (c *client) Set(ctx context.Context, k string, v interface{}, d time.Duration) error {
 	return redisClt.Set(ctx, k, v, d).Err()
+}
+
+func (c *client) Delete(ctx context.Context, k string) error {
+	return redisClt.Del(ctx, k).Err()
 }
 
 func (c *client) Ping() error {

@@ -56,11 +56,13 @@ func NewMiddlewareConfig() MiddlewareConfig {
 }
 
 type SecurityConfig struct {
-	HMACKey string
+	JWTSignatureHMAC512Key string
+	JWTEncryptionKey       string
 }
 
 func NewSecurityConfig() SecurityConfig {
 	return SecurityConfig{
-		HMACKey: os.Getenv("HMAC_KEY"),
+		JWTSignatureHMAC512Key: os.Getenv("JWT_SIGNIATURE_HMAC512_KEY"),
+		JWTEncryptionKey:       os.Getenv("JWT_ENCRYPTION_SECRET"),
 	}
 }

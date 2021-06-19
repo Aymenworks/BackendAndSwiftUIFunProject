@@ -13,32 +13,34 @@ import (
 	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/config"
 	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/controllers"
 	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/domain/services/tips"
-	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/entrypoints/router"
-	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/entrypoints/router/chiroutes"
+	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/domain/services/user"
 	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/http/middlewares"
+	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/http/router/chiroutes"
 	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/infra/caches"
 	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/infra/databases"
 	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/infra/mysql"
 	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/infra/s3"
+	"github.com/aymenworks/ProjectCookingTips-GoFromScratch/src/security"
+	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"go.uber.org/zap"
 )
 
 func main() {
 	config := config.New()
-	router := router.NewChiRouter()
+	router := chi.NewRouter()
 
-	router.UseMiddleware(middleware.DefaultLogger)
-	router.UseMiddleware(middlewares.PanicRecover)
-	router.UseMiddleware(middleware.StripSlashes) // e.g `/hello` and `/hello/` will be the same
-	router.UseMiddleware(middlewares.RequestSizeLimit)
+	router.Use(middleware.DefaultLogger)
+	router.Use(middlewares.PanicRecover)
+	router.Use(middleware.StripSlashes) // e.g `/hello` and `/hello/` will be the same
+	router.Use(middlewares.RequestSizeLimit)
 
 	// TODO: Check middleware for response compression after having some rest APIs working
 
 	// cancel a request if processing takes longer than 60 seconds,
 	// server will respond with a http.StatusGatewayTimeout (504).
 	// TODO: Not timing out unless using ctx-Done()
-	router.UseMiddleware(middleware.Timeout(config.Middleware.Timeout))
+	router.Use(middleware.Timeout(config.Middleware.Timeout))
 
 	appLog := initAppLog()
 	zap.ReplaceGlobals(appLog)
@@ -76,20 +78,43 @@ func main() {
 		logger.Errorw("Redis client could not ping", "err", err)
 	}
 
+	// Setup security
+	securityClient := security.NewSecurityClient(config.Security)
+
 	// Setup repositories
 	tipsRepository := mysql.NewMysqlTipsRepository(db)
+	userRepository := mysql.NewMysqlUserRepository(db)
 
 	// Setup services
 	imageUploader := s3.NewS3ImageUploader(s3svc)
+	userService := user.NewUserService(userRepository, cacheClt)
 	tipsService := tips.NewTipsService(tipsRepository)
 
 	// Setup controllers
+	authenticationController := controllers.NewAuthenticationController(userService, securityClient, cacheClt)
 	tipsController := controllers.NewTipsController(tipsService, imageUploader)
 	profileController := controllers.NewProfileController(cacheClt)
 
 	// Setup routes
-	router.Mount("/tips", chiroutes.Tips(tipsController))
-	router.Mount("/profile", chiroutes.Profile(profileController))
+
+	// Requires authentication
+	router.Group(func(r chi.Router) {
+		authenticationMiddleware := middlewares.AuthenticatedOnly(securityClient, userService.VerifyAccessToken)
+		r.Use(authenticationMiddleware)
+		r.Mount("/tips", chiroutes.Tips(tipsController))
+		r.Mount("/profile", chiroutes.Profile(profileController))
+		r.Post("/auth/logout", authenticationController.Logout)
+	})
+
+	// Doesn't requires authentication
+	router.Group(func(r chi.Router) {
+		r.Route("/auth", func(rr chi.Router) {
+			rr.Post("/login", authenticationController.Login)
+			rr.Post("/signup", authenticationController.Signup)
+			rr.Post("/refresh-token", authenticationController.RefreshToken)
+
+		})
+	})
 
 	go func() {
 		logger.Debugf("HTTP server ListenAndServe: %v", server.Addr)

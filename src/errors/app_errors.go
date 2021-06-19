@@ -17,6 +17,15 @@ func (e *appError) Error() string {
 	return fmt.Sprintf("%v %v", e.Code, e.Message)
 }
 
+func (e *appError) CanDisplayMessage() bool {
+	switch e.HTTPStatusCode {
+	case http.StatusForbidden, http.StatusUnauthorized, http.StatusNotFound, http.StatusMethodNotAllowed:
+		return false
+	default:
+		return true
+	}
+}
+
 type AppError struct {
 	Code    string `json:"code,omitempty"`
 	Message string `json:"message,omitempty"`
@@ -51,6 +60,13 @@ func newBadRequest(code, msg string) *appError {
 	return &appError{
 		Message:        msg,
 		HTTPStatusCode: http.StatusBadRequest,
+	}
+}
+
+func newUnauthorizedRequest(code, msg string) *appError {
+	return &appError{
+		Message:        msg,
+		HTTPStatusCode: http.StatusUnauthorized,
 	}
 }
 
